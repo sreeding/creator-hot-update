@@ -1,5 +1,5 @@
 // @ts-ignore
-const md5 = require("md5");
+// const md5 = require("md5");
 
 const { ccclass, property } = cc._decorator;
 
@@ -39,6 +39,11 @@ export default class UpdateScene extends cc.Component {
             this.upTit.string = "发现新版本，大小：" + mb;
         }
         this._dowloading = (down, total, per) => {
+            if (total < 1024 * 1024 && this.rate.node.active) {
+                this.rate.node.active = false;
+            } else {
+                this.rate.node.active = true;
+            }
             this.rate.string = `${Math.floor(down / (1024 * 1024))}MB/${Math.floor(total / (1024 * 1024))}MB`;
             this.progress.string = Math.floor(per * 100) + "%";
         }
@@ -74,6 +79,10 @@ export default class UpdateScene extends cc.Component {
         // let oldManifest = jsb.fileUtils.isFileExist(storageTempPath + "/project.manifest") ? (storageTempPath + "/project.manifest") : ("project.manifest");
         let oldManifest = jsb.fileUtils.isFileExist(rootpath + "project.manifest") ? (rootpath + "project.manifest") : ("project.manifest");
         this._am = new jsb.AssetsManager(oldManifest, storageTempPath, versionCompareHandle);
+        // if (cc.sys.os === cc.sys.OS_ANDROID) {
+        //     // @ts-ignore
+        //     this._am.setMaxConcurrentTask(2);
+        // }
         this.checkUpdate();
     }
 
@@ -105,21 +114,21 @@ export default class UpdateScene extends cc.Component {
             // 当path所在的文件太大时md5运算可能会导致堆栈内存不足
             // 正常情况默认返回true，需要验证推荐crc等算法验证，而非md5，需要同时改造version_generator.js
             // @ts-ignore
-            const data = jsb.fileUtils.getDataFromFile(path);
-            const currMD5 = md5(data);
-            const expectedMD5 = asset.md5;  // 文件MD5值
+            // const data = jsb.fileUtils.getDataFromFile(path);
+            // const currMD5 = md5(data);
+            // const expectedMD5 = asset.md5;  // 文件MD5值
 
-            if (currMD5 == expectedMD5) {
-                console.log("MD5校验成功：" + asset.path);
-                return true;
-            }
-
-            // MD5不相同，删除下载文件
-            // if (jsb.fileUtils.isFileExist(path)) {
-            //     jsb.fileUtils.removeFile(path);
+            // if (currMD5 == expectedMD5) {
+            //     console.log("MD5校验成功：" + asset.path);
+            //     return true;
             // }
-            console.log("MD5校验失败：" + asset.path, "当前MD5：" + currMD5 + " 目标MD5：" + expectedMD5);
-            return false;
+
+            // // MD5不相同，删除下载文件
+            // // if (jsb.fileUtils.isFileExist(path)) {
+            // //     jsb.fileUtils.removeFile(path);
+            // // }
+            // console.log("MD5校验失败：" + asset.path, "当前MD5：" + currMD5 + " 目标MD5：" + expectedMD5);
+            // return false;
         })
 
         this._am.setEventCallback(this.checkCb.bind(this));
@@ -232,6 +241,8 @@ export default class UpdateScene extends cc.Component {
                 break;
             case jsb.EventAssetsManager.UPDATE_FAILED:
                 console.log("更新失败：" + event.getMessage());
+                this._updating = false;
+                this.retry();
                 break;
             case jsb.EventAssetsManager.ERROR_UPDATING:
                 console.log("更新错误：" + event.getMessage());
@@ -246,7 +257,6 @@ export default class UpdateScene extends cc.Component {
         if (failed) {
             this._am.setEventCallback(null);
             this._updating = false;
-            this.upTit.string = "更新失败！";
         }
         if (over) {
             this.upTit.string = "加载中...";
@@ -272,5 +282,13 @@ export default class UpdateScene extends cc.Component {
             cc.audioEngine.stopAll();
             cc.game.restart();
         }
+    }
+    /**
+     * 失败重试
+     */
+    retry() {
+        if (this._updating) return;
+        this._am.downloadFailedAssets();
+        console.log("---------- 失败重试 ----------");
     }
 }

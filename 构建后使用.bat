@@ -4,6 +4,7 @@ setlocal enabledelayedexpansion
 
 RD /S /Q build\jsb-link\frameworks\runtime-src\proj.android-studio\res
 RD /S /Q build\jsb-link\frameworks\runtime-src\proj.android-studio\src
+RD /S /Q build\remote-assets
 
 COPY /y version_generator.js build\jsb-link\version_generator.js
 COPY /y pngquant\pngquant.exe build\jsb-link\assets\pngquant.exe
